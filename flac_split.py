@@ -324,7 +324,7 @@ def main():
                     out = ffprobe(tmp)
                 except:
                     continue
-                if out["format_name"] != "image2":
+                if out["format_name"] != ["image2", "png_pipe"]:
                     continue
                 if tmp.lower().startswith(name):
                     cover_path = os.path.join(cue_dir, tmp)
