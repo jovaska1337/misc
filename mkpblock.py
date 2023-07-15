@@ -1,6 +1,6 @@
 #!/bin/env python
 
-# convert image to METADATA_PICTURE_BLOCK
+# convert image to METADATA_BLOCK_PICTURE
 
 import os
 import re
