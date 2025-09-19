@@ -7,7 +7,7 @@ import struct
 import base64
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
-import io
+from io import BytesIO
 
 
 def usage():
@@ -75,7 +75,7 @@ def main():
     # read file to bytes and open image
     try:
         image_bytes = file.read_bytes()
-        img = Image.open(io.BytesIO(image_bytes))
+        img = Image.open(BytesIO(image_bytes))
     except (FileNotFoundError, IsADirectoryError, PermissionError):
         print(f"Can't access '{file}'", file=sys.stderr)
         return 1
