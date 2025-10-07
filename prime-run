@@ -1,0 +1,66 @@
+#!/bin/bash
+# prime-run that automatically offloads onto the least utilized GPU on the system
+
+# query utilization info for all GPUs
+unset N
+info=()
+while read gpu; do
+	gpu="${gpu##*UUID: }"
+	gpu="${gpu%%)*}"
+	tmp="$( nvidia-smi \
+		--id="$gpu" \
+		--query-gpu index,utilization.memory,utilization.gpu,memory.used \
+		--format csv,noheader,nounits )"
+	tmp="${tmp// /}"
+	IFS=, read -a tmp <<< "$tmp"
+	N="${#tmp[@]}"
+	info+=(${tmp[@]})
+done < <( nvidia-smi -L )
+
+# get least utilized GPU
+unset gpu
+cnt=$((${#info[@]}/${N}))
+i=1
+while [[ $i -lt $N ]]; do
+	j=0
+	unset p d b
+	while [[ $j -lt ${#info[@]} ]]; do
+		my_id=${info[${j}]}
+		my_val=${info[$((${j}+${i}))]}
+		if [[ "$p" ]]; then
+			if [[ ${my_val} != $p ]]; then
+				d=1
+			fi
+			if [[ ${my_val} -lt $p ]]; then
+				b=${my_id}
+			fi
+		else
+			b=${my_id}
+			p=${my_val}
+			d=0
+		fi
+		j=$(( $j + $N ))
+	done
+	if [[ $d == 1 ]]; then
+		gpu=${b}
+		break
+	fi
+	i=$(($i + 1))
+done
+
+# select random GPU if all GPUs have equal utilization
+if [[ ! "$gpu" ]]; then
+	gpu=${info[$(($N*(RANDOM%$cnt)))]}
+fi
+
+echo "Selected GPU ${gpu}"
+
+# enable prime offload
+export \
+	__NV_PRIME_RENDER_OFFLOAD=1 \
+	__NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G${gpu} \
+	__VK_LAYER_NV_optimus=NVIDIA_only \
+	__GLX_VENDOR_LIBRARY_NAME=nvidia
+
+# execute program
+exec "$@"
